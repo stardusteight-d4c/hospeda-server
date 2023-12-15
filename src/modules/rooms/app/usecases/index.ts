@@ -1,0 +1,11 @@
+export { Register } from "./Register";
+export { FindOne } from "./FindOne";
+export { FindByHotel } from "./FindByHotel";
+export { FindEventHotelRooms } from "./FindEventHotelRooms";
+export { Edit } from "./Edit";
+export { Delete } from "./Delete";
+export { UploadImage } from "./UploadImage";
+export { DeleteImages } from "./DeleteImages";
+export { ListCommodities } from "./ListCommodities";
+export { ListCategories } from "./ListCategories";
+export { List } from "./List";

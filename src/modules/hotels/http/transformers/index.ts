@@ -1,0 +1,1 @@
+export { prismaToHotel } from "./prismaToHotel";

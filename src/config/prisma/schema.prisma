@@ -1,0 +1,293 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.1.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  promoter
+  admin
+}
+
+enum HotelStatus {
+  available
+  unavailable
+}
+
+enum CategoryReference {
+  hotels
+  rooms
+  events
+}
+
+enum EventPrivacy {
+  public
+  private
+}
+
+enum EventStatus {
+  pending
+  approved
+  rejected
+  closed
+}
+
+enum RoomStatus {
+  available
+  unavailable
+}
+
+enum PaymentMethod {
+  creditCard
+  pix
+  boleto
+}
+
+enum BannerStatus {
+  active
+  inactive
+}
+
+model User {
+  id           String  @id @default(uuid())
+  name         String
+  email        String  @unique
+  phoneNumber  String
+  password     String
+  profileImage String?
+  companyId    String?
+
+  role Role @default(user)
+
+  bookings Booking[]
+  company  Company?  @relation(fields: [companyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Event     Event[]
+
+  @@map("users")
+}
+
+model Company {
+  id          String  @id @default(uuid())
+  addressId   String?
+  name        String
+  segment     String
+  phoneNumber String
+  email       String
+  cnpj        String  @unique
+
+  address       Address? @relation(fields: [addressId], references: [id])
+  collaborators User[]
+  events        Event[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("companies")
+}
+
+model Hotel {
+  id          String  @id @default(uuid())
+  addressId   String?
+  name        String
+  slug        String
+  starRating  Int
+  description String?
+  categories  Json[]
+  commodities Json[]
+  images      Json[]
+
+  status              HotelStatus               @default(available)
+  internalInformation HotelInternalInformation?
+  rooms               Room[]
+  eventHotel          EventHotel[]
+  address             Address?                  @relation(fields: [addressId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("hotels")
+}
+
+model HotelInternalInformation {
+  id            String  @id @default(uuid())
+  hotelId       String  @unique
+  hotelPolicies String?
+  breakfastTax  Float?
+  issTax        Float?
+  serviceTax    Float?
+  contacts      Json[]
+
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId])
+  @@map("hotel_internal_informations")
+}
+
+model Address {
+  id            String  @id @default(uuid())
+  postalCode    String
+  number        String?
+  street        String
+  complement    String?
+  neighbourhood String
+  city          String
+  state         String
+  latitude      Float?
+  longitude     Float?
+
+  hotel   Hotel[]
+  event   Event[]
+  company Company[]
+
+  @@map("addresses")
+}
+
+model Commodity {
+  id          String @id @default(uuid())
+  icon        String
+  title       String
+  description String
+
+  @@map("commodities")
+}
+
+model Category {
+  id        String            @id @default(uuid())
+  reference CategoryReference
+  title     String
+
+  @@map("categories")
+}
+
+model Room {
+  id                String  @id @default(uuid())
+  hotelId           String
+  name              String
+  maxGuest          Int
+  beds              Int
+  minRoomNightPrice Float?
+  description       String?
+  categories        Json[]
+  commodities       Json[]
+  images            Json[]
+
+  status         RoomStatus       @default(available)
+  hotel          Hotel            @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  eventHotelRoom EventHotelRoom[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([hotelId])
+  @@map("rooms")
+}
+
+model Event {
+  id                String   @id @default(uuid())
+  companyId         String?
+  addressId         String?
+  name              String
+  slug              String
+  type              String
+  estimatedAudience Int
+  description       String?
+  banner            Json?
+  accommodations    Int?     @default(0)
+  bookings          Int?     @default(0)
+  tags              String[]
+  officialHotels    String[]
+  hotels            String[]
+  dateTime          Json
+  extras            Json?
+  highlight         Boolean? @default(false)
+
+  privacy EventPrivacy
+  status  EventStatus
+
+  company     Company?     @relation(fields: [companyId], references: [id])
+  eventHotels EventHotel[]
+  address     Address?     @relation(fields: [addressId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  User      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+
+  @@map("events")
+}
+
+model EventHotel {
+  id                 String   @id @default(uuid())
+  eventId            String
+  hotelId            String
+  startDateAllotment DateTime
+  endDateAllotment   DateTime
+
+  event           Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  hotel           Hotel            @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  eventHotelRooms EventHotelRoom[]
+
+  @@unique([eventId, hotelId])
+  @@map("event_hotels")
+}
+
+model EventHotelRoom {
+  id                String @id @default(uuid())
+  eventHotelId      String
+  roomId            String
+  negotiatedValue   Int
+  availableQuantity Int
+
+  eventHotel EventHotel @relation(fields: [eventHotelId], references: [id], onDelete: Cascade)
+  room       Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  bookings   Booking[]
+
+  @@unique([eventHotelId, roomId])
+  @@map("event_hotel_rooms")
+}
+
+model Banner {
+  id          String  @id @default(uuid())
+  title       String
+  buttonTitle String?
+  buttonLink  String?
+  image       Json?
+  position    Int?
+
+  status BannerStatus @default(active)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("banners")
+}
+
+model Booking {
+  id               String @id @default(uuid())
+  eventHotelRoomId String
+  customerId       String
+
+  customerCPF String
+  checkIn     DateTime
+  checkOut    DateTime
+  price       Int
+  additions   Json?
+  guests      Json
+
+  paymentMethod  PaymentMethod
+  eventHotelRoom EventHotelRoom @relation(fields: [eventHotelRoomId], references: [id])
+  customer       User           @relation(fields: [customerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("bookings")
+}
